@@ -86,3 +86,33 @@ def clean_cdc_weekly():
     disp = disp.sort_values(["end_of_week", "age_group"])
     save_parquet(disp, "cddc_disparities_by_week.parquet")
 
+
+#Clean BRFSS 2020
+from sklearn.model_selection import train_test_split
+
+def clean_brfss_2020():
+        f = DATA_RAW / "heart_2020_cleaned.csv"
+
+        #binary
+        bin_cols = ["HeartDisease", "Smoking", "AlcoholDrinking", "Stroke",
+                    "DiffWalking", "PhysicalActivity", "Asthma",
+                    "KidneyDisease", "SkinCancer"]
+        for c in bin_cols:
+            if c in df.columns: df[c] = yesno_no_int(df[c])
+
+        #ordinal GenHealth
+        if "GenHealth" in df.columns:
+            map_gh = {"Poor":1, "Fari":2, "Good":3, "Very good":4, "Excellent":5}
+            df["GenHealthOrd"] = df["GenHealth"].map(map_gh).astype("Int64")
+
+        #numeric
+        for c in ["BMI", "PhysicalHealth", "MentalHealth", "SleepTime"]:
+            if c in df.columns:
+                df[c] = pd.to_numeric(df[c], errors="coere")
+                df[c] = winsorize(df[c])
+
+        #harmonize
+        if "Race" in df.columns:
+            df["RaceH"] = df["Race"].map(RACE_MAP).fillna("Other/Multiple")
+        if "AgeCategory" in df.columns:
+            df
