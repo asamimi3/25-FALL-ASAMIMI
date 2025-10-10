@@ -145,3 +145,75 @@ def clean_brfss_2020():
             tr, te = train_test_split(X.index, test_size=0.2, random_state=42, stratify=strat)
             pd.Series(index=X.index, data=np.where(X.index.isin(tr), "train", "test")).to_csv(
                 DATA_PROC/"brfss2020_split.csv", index_label="row_id", header=["split"])
+
+
+#clean BRFSS 2022
+def clean_brfss_2022():
+    #Prefer the 'with_nans' to demonstrate imputation; fall back otherwise
+    f = DATA_RAW / "heart_2022_with_nans.csv"
+    if not f.exists():
+        f = DATA_RAW / "heart_2022_no_nans.csv"
+    df = pd.read_csv(f)
+
+    #Target
+    target = "HadHeartAttack" if "HadHeartAttack" in df.columns else None
+    if target is None:
+        raise ValueError("Could not find HadHeartAttack in 2022 file")
+
+    #Harmonize race/age
+    rc = "RaceEthnicityCategory" if "RaceEthnicityCategory" in df.columns else "Race"
+    df["RaceH"] = df[rc].map(RACE_MAP).fillna("Other/Multiple")
+
+    ac = "AgeCategory" if "AgeCategory" in df.columns else None
+    if ac: df["AgeCat"] = df[ac].str.replace("Age ","", regex=False).astype("category")
+
+    #Binary fields
+    for c in ["HadHearAttack","HadAngina","HadStroke","PhysicalActivity","Asthma",
+              "KidneyDisease","SkinCancer"]:
+        if c in df.columns and df[c].dtype == object:
+            df[c] = yesno_to_int(df[c])
+
+    #Numerics
+    for c in ["BMI","PhysicalHealth","MentalHealth","SleepTime"]:
+        if c in df.columns:
+            df[c] = pd.to_numeric(df[c], errors="coerce")
+            df[c] = winsorize(df[c])
+
+    #impute simple
+    for c in df.columns:
+        if df[c].dtyoe.kind in "ifu":
+            df[c] = df[c].fillna(df[c].median())
+        elif df[c].dtype == object:
+            df[c] = df[c].fillna("Unknown")
+
+    #build feature set similar to 2020
+    keep = [target, "BMI","PhysicalHealth","MentalHealth","SleepTime",
+            "PhysicalActivity","Asthma","KidneyDisease","SkinCancer",
+            "Sex","AgeCat","RaceH"]
+    keep = [c for c in keep if c in df.columns]
+    X = df[keep].copy()
+    X = pd.get_dummies(X, columns=[c for c in ["Sex","AgeCat","RaceH"] if c in X.columns],
+                       drop_first=True)
+
+    save_parquet(X, "brfss2022_ready.parquet")
+
+#Equity dataset
+def clean_equity_subset():
+    train = DATA_RAW / "train_clean.csv"
+    test = DATA_RAW / "test_clean.csv"
+    frames = []
+    for f in [train, test]:
+        if f.exists():
+            d = pd.read_csv(f, low_memory=False)
+            #columns
+            keep_like = ["patient_age","patient_race","patient_state","patient_zip3","bmi","payer_type"]
+            ses_prefixes = ["income_", "education_", "poverty", "unemployment_rate",
+                            "limited_english", "health_uninsured", "rent_", "home_", "PM25", "Ozone", "N02",
+                            "wealth_index", "hh_income_ratio", "education_ratio"]
+            keep = [c for c in d.columns if c in keep_like or any(c.startswitch(p) for p in ses_prefixes)]
+            if "DiagPeriodL90D" in d.columns: keep+=["DiagperiodL90D"]
+            frames.append(d[keep].copy())
+        if frames:
+            out = pd.concat(frames, ignore_index=True)
+            out["RaceH"] = out["patient_race"].map(RACE_MAP).fillna("Other/Multiple")
+            save_parquet(out, "equity_selected.parquet")
