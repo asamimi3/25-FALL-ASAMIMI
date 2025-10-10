@@ -111,8 +111,37 @@ def clean_brfss_2020():
                 df[c] = pd.to_numeric(df[c], errors="coere")
                 df[c] = winsorize(df[c])
 
-        #harmonize
+        #harmonize race/age
         if "Race" in df.columns:
             df["RaceH"] = df["Race"].map(RACE_MAP).fillna("Other/Multiple")
         if "AgeCategory" in df.columns:
-            df
+            df["AgeCat"] = df["AgeCategory"].astype("category")
+
+        #target & minimal drop of rows with missing target
+        df = df.dropna(subset=["HeartDisease"])
+
+        #impute for remaining numeric NA
+        for c in ["BMI", "PhysicalHealth", "MentalHealth", "SleepTime", "GenHealthOrd"]:
+            if c in df.columns:
+                df[c] = df[c].median())
+
+        #keep clean feature set
+        keep = ["HeartDisease", "BMI","PhysicalHealth","MentalHealth","SleepTime",
+                "Smoking","AlcoholDrinking","Stroke","DiffWalking",
+                "PhysicalActivity","Asthma","KidneyDisease","SkinCancer",
+                "GenHealthOrd","Sex","AgeCat","RaceH","Diabetic"]
+        keep = [c for c in keep if c in df.columns]
+        X = df[keep].copy()
+
+       #one-hot encode small categoricals
+        X = pd.get_dummies(X, columns=[c for c in ["Sex","AgeCat","RaceH","Diabetic"] if c in X.columns],
+                           drop_first=True)
+
+        save_parquet(X, "brfss2020_ready.parquet")
+
+        #stratified spit labels for reproductibility
+        if "RaceH" in df.columns:
+            strat = pd.concat([df["HeartDisease"], df["RaceH"]], axis=1).astype(str).sum(axis=1)
+            tr, te = train_test_split(X.index, test_size=0.2, random_state=42, stratify=strat)
+            pd.Series(index=X.index, data=np.where(X.index.isin(tr), "train", "test")).to_csv(
+                DATA_PROC/"brfss2020_split.csv", index_label="row_id", header=["split"])
