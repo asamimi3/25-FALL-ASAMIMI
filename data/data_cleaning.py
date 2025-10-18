@@ -173,7 +173,7 @@ def clean_brfss_2020():
 #---------------------------------
 #clean BRFSS 2022
 def clean_brfss_2022():
-    #Prefer the 'with_nans' to demonstrate imputation; fall back otherwise
+    #'with_nans' to demonstrate imputation; fall back otherwise
     f = DATA_RAW / "heart_2022_with_nans.csv"
     if not f.exists():
         f = DATA_RAW / "heart_2022_no_nans.csv"
@@ -210,7 +210,7 @@ def clean_brfss_2022():
         elif df[c].dtype == object:
             df[c] = df[c].fillna("Unknown")
 
-    #build feature set similar to 2020
+    # feature set similar to 2020
     keep = [target, "BMI","PhysicalHealth","MentalHealth","SleepTime",
             "PhysicalActivity","Asthma","KidneyDisease","SkinCancer",
             "Sex","AgeCat","RaceH"]
@@ -261,7 +261,7 @@ def clean_equity_subset():
         d = pd.read_csv(f, low_memory=False)
         print(f"{f.name} columns sample:", list(d.columns)[:40])
 
-        # exact cols we’d like if present
+        # exact cols - if present
         keep_like = [
             "patient_age", "patient_race", "patient_state",
             "patient_zip3", "bmi", "payer_type"
@@ -279,7 +279,7 @@ def clean_equity_subset():
         # …plus anything that STARTS WITH our prefixes (case-insensitive)
         cols += [c for c in d.columns if c.lower().startswith(ses_prefixes)]
 
-        # optional diagnostic period column (handle common spellings)
+        # optional diagnostic period column - spellings
         diag_col = find_col(d, ["DiagPeriodL90D", "DiagperiodL90D", "diagperiodl90d"])
         if diag_col:
             cols.append(diag_col)
