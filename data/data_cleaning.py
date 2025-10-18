@@ -135,7 +135,7 @@ def clean_brfss_2020():
             if c in df.columns:
                 df[c] = df[c].fillna(df[c].median())
 
-        #keep clean feature set
+        # clean feature set
         keep = ["HeartDisease", "BMI","PhysicalHealth","MentalHealth","SleepTime",
                 "Smoking","AlcoholDrinking","Stroke","DiffWalking",
                 "PhysicalActivity","Asthma","KidneyDisease","SkinCancer",
@@ -143,7 +143,20 @@ def clean_brfss_2020():
         keep = [c for c in keep if c in df.columns]
         X = df[keep].copy()
 
-       #one-hot encode small categoricals
+        #EDA version before dummy encoding
+        eda_cols = [
+            "HeartDisease", "BMI", "PhysicalHealth", "MentalHealth", "SleepTime",
+            "Smoking", "AlcoholDrinking", "Stroke", "DiffWalking", "PhysicalActivity",
+            "Asthma", "KidneyDisease", "SkinCancer", "GenHealthOrd", "Sex", "AgeCat", "RaceH", "Diabetic"
+        ]
+
+        # only keep the columns that actually exist in this df
+        eda_cols = [c for c in eda_cols if c in df.columns]
+
+        save_parquet(df[eda_cols], "brfss2020_eda.parquet")
+
+
+        #one-hot encode small categoricals
         X = pd.get_dummies(X, columns=[c for c in ["Sex","AgeCat","RaceH","Diabetic"] if c in X.columns],
                            drop_first=True)
 
@@ -203,6 +216,24 @@ def clean_brfss_2022():
             "Sex","AgeCat","RaceH"]
     keep = [c for c in keep if c in df.columns]
     X = df[keep].copy()
+
+    # EDA versions -- RaceH as a single column
+    brfss20_eda = pd.read_parquet(DATA_PROCESSED / "brfss2020_eda.parquet")
+    brfss22_eda = pd.read_parquet(DATA_PROCESSED / "brfss2022_eda.parquet")
+
+    # READY versions
+    brfss20_ready = pd.read_parquet(DATA_PROCESSED / "brfss2020_ready.parquet")
+    brfss22_ready = pd.read_parquet(DATA_PROCESSED / "brfss2022_ready.parquet")
+
+    eda_cols = [
+        "HadHeartAttack", "BMI", "PhysicalHealth", "MentalHealth", "SleepTime",
+        "Smoking", "AlcoholDrinking", "Stroke", "DiffWalking", "PhysicalActivity",
+        "Asthma", "KidneyDisease", "SkinCancer", "GenHealthOrd", "Sex", "AgeCat", "RaceH", "Diabetic"
+    ]
+    eda_cols = [c for c in eda_cols if c in df.columns]
+    save_parquet(df[eda_cols], "brfss2022_eda.parquet")
+
+
     X = pd.get_dummies(X, columns=[c for c in ["Sex","AgeCat","RaceH"] if c in X.columns],
                        drop_first=True)
 
