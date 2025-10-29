@@ -6,4 +6,4 @@ sheet. i then moved my new code to the .py, and i
 - edited it
 - made some adjustments
 - explored more data
-- started making plots in tableau 
+- started making plots in tableau
