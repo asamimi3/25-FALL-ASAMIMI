@@ -7,3 +7,4 @@ sheet. i then moved my new code to the .py, and i
 - made some adjustments
 - explored more data
 - started making plots in tableau
+- 
